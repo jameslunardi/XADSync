@@ -71,6 +71,23 @@ One-way synchronization from corporate domain to production domain.
 - **Prod Domain Service Account:** Write access to target domain (prod.local)
 - **Server Location:** Production network with connectivity to both domains
 
+#### 2.2.2 Sync Schedule & Execution
+- **Schedule Type:** Configurable scheduled task
+- **Default Frequency:** Every 2 hours
+- **Manual Trigger:** Support for on-demand manual execution
+- **Execution Windows:** No specific time restrictions (runs 24/7)
+
+#### 2.2.3 Sync Methodology
+- **Approach:** Full synchronization (not incremental/delta)
+- **Process Flow:**
+  1. Read all user accounts from corp.local (with EmployeeID filter)
+  2. Read all user accounts from prod.local (previously synced accounts)
+  3. Compare both sets and categorize users into:
+     - **Additions:** Users in corp but not in prod (create new accounts)
+     - **Modifications:** Users in both domains (update attributes)
+     - **Removals:** Users in prod but not in corp (quarantine/delete)
+  4. Execute the identified actions in order
+
 ---
 
 ## 3. Architecture Design
@@ -100,3 +117,6 @@ One-way synchronization from corporate domain to production domain.
 
 ### Q2: What Active Directory objects do you want to synchronize?
 **A:** User accounts only. Filter by EmployeeID attribute (must be populated), with support for exclusion lists. Sync basic attributes plus manager, department, and employeeid. No passwords or group memberships. EmployeeID is the matching attribute. New accounts created as disabled without passwords in a specific OU. Existing accounts updated to match corp. Orphaned accounts (in prod but not corp) are disabled, moved to quarantine OU, and deleted after 90 days.
+
+### Q3: How often should the synchronization run?
+**A:** Configurable scheduled task running every 2 hours by default, with support for manual triggering. Use full sync approach: read all users from both domains, compare them, categorize into additions/modifications/removals, then execute actions.

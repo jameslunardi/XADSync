@@ -136,7 +136,20 @@ One-way synchronization from corporate domain to production domain.
 ## 3. Architecture Design
 
 ### 3.1 Technology Stack
-*To be decided*
+
+**Primary Language:** PowerShell
+
+**Core Dependencies:**
+- ActiveDirectory PowerShell Module (for AD operations)
+- Built-in cmdlets: Get-ADUser, Set-ADUser, New-ADUser, Move-ADObject, Remove-ADObject
+- Send-MailMessage (for email notifications)
+
+**Advantages for this use case:**
+- Native AD cmdlets designed for domain operations
+- Simple credential management with PSCredential objects
+- Easy to debug and maintain
+- Standard choice for Windows AD automation
+- Scheduled Task integration on Windows Server
 
 ### 3.2 Components
 *To be designed*
@@ -166,3 +179,6 @@ One-way synchronization from corporate domain to production domain.
 
 ### Q4: What are your logging and error handling requirements?
 **A:** File-based logging with automatic cleanup (older than X days). Change volume fail-safe: if more than X changes detected, stop and email support for manual verification with override capability. Per-user error handling: single errors continue processing, but same user erroring repeatedly triggers alert. Multiple errors in one run may halt execution. Email summary reports after each sync with counts of additions/modifications/removals/errors.
+
+### Q5: What technology stack do you want to use?
+**A:** PowerShell with the ActiveDirectory module. This provides native AD cmdlets, simple credential management, and is the standard choice for Windows AD automation.

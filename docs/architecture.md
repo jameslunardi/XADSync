@@ -151,10 +151,53 @@ One-way synchronization from corporate domain to production domain.
 - Standard choice for Windows AD automation
 - Scheduled Task integration on Windows Server
 
-### 3.2 Components
+### 3.2 Configuration Management
+
+**Configuration File Format:** JSON (config.json)
+
+**Configuration File Contents:**
+- Domain settings (domain names, domain controllers)
+- OU paths (new users OU, quarantine OU in prod.local)
+- Credential file paths (references to encrypted credential files)
+- Thresholds:
+  - Change volume limit
+  - Error count thresholds (per-user, per-run)
+  - Log retention days
+  - Quarantine retention days (90 days default)
+- Email settings:
+  - SMTP server address
+  - From address
+  - Recipient list (support team)
+- Exclusion list (usernames or EmployeeIDs to skip)
+- Attribute mappings (which AD attributes to sync)
+- Logging settings (log directory path, verbosity level)
+
+**Credential Storage (Secure Local Method):**
+- Use PowerShell's `Export-Clixml` and `Import-Clixml` cmdlets
+- Create encrypted credential files using `Get-Credential | Export-Clixml`
+- Credentials are encrypted using Windows Data Protection API (DPAPI)
+- Encryption is user-specific and machine-specific
+- Only the service account on the designated server can decrypt
+- Store credential files:
+  - `corp-domain-credential.xml` - Corp domain read account
+  - `prod-domain-credential.xml` - Prod domain write account
+
+**Setup Process:**
+1. Run setup script as the service account that will execute scheduled task
+2. Script prompts for credentials and saves encrypted files
+3. Config file references the credential file paths
+4. Main sync script imports credentials at runtime using `Import-Clixml`
+
+**Security Model:**
+- Config file contains non-sensitive settings (can be in version control with redacted emails)
+- Credential files are machine/user-specific, cannot be copied to other systems
+- Credential files excluded from version control (.gitignore)
+- Only the service account can read the encrypted credentials
+
+### 3.3 Components
 *To be designed*
 
-### 3.3 Data Flow
+### 3.4 Data Flow
 *To be mapped*
 
 ---
@@ -182,3 +225,6 @@ One-way synchronization from corporate domain to production domain.
 
 ### Q5: What technology stack do you want to use?
 **A:** PowerShell with the ActiveDirectory module. This provides native AD cmdlets, simple credential management, and is the standard choice for Windows AD automation.
+
+### Q6: How should configuration be managed?
+**A:** Use a JSON config file for all settings (domains, OUs, thresholds, email, exclusions). For credentials, use PowerShell's Export-Clixml/Import-Clixml which encrypts credentials using Windows DPAPI. Credentials are user and machine-specific, ensuring only the service account on the sync server can decrypt them. A setup script will create the encrypted credential files.

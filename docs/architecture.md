@@ -88,6 +88,49 @@ One-way synchronization from corporate domain to production domain.
      - **Removals:** Users in prod but not in corp (quarantine/delete)
   4. Execute the identified actions in order
 
+#### 2.2.4 Logging & Auditing
+- **Log Storage:** File-based logging to local disk
+- **Log Rotation:** Automatic deletion of log files older than configurable threshold (e.g., 90 days)
+- **Log Detail:** Record all sync actions (create, update, disable, delete operations per user)
+- **Log Location:** Configurable log directory path
+
+#### 2.2.5 Error Handling & Fail-Safes
+
+**Change Volume Fail-Safe:**
+- Monitor total number of changes (additions + modifications + removals)
+- If changes exceed configurable threshold, halt execution before making changes
+- Send email alert to support team for manual review
+- Support override mechanism to allow manual continuation after verification
+
+**Per-User Error Handling:**
+- Single user error should NOT stop the sync process
+- Log the error and continue processing other users
+- Track errors per user across multiple sync runs
+- If the same user fails repeatedly (configurable threshold), generate error report
+
+**Critical Error Handling:**
+- If multiple errors occur in a single sync run (configurable threshold), halt execution
+- Send alert to support team with error details
+
+**Error Tracking:**
+- Maintain persistent error history for users
+- Track error count and last error date per user
+- Reset error count after successful sync of previously failed user
+
+#### 2.2.6 Reporting & Notifications
+- **Summary Reports:** After each sync, generate summary report with:
+  - Total users processed
+  - Additions count
+  - Modifications count
+  - Quarantines/removals count
+  - Errors encountered
+  - Sync duration
+- **Email Notifications:**
+  - Send summary report after each successful sync
+  - Send alert email for fail-safe triggers
+  - Send alert email for critical errors
+  - Configurable recipient list
+
 ---
 
 ## 3. Architecture Design
@@ -120,3 +163,6 @@ One-way synchronization from corporate domain to production domain.
 
 ### Q3: How often should the synchronization run?
 **A:** Configurable scheduled task running every 2 hours by default, with support for manual triggering. Use full sync approach: read all users from both domains, compare them, categorize into additions/modifications/removals, then execute actions.
+
+### Q4: What are your logging and error handling requirements?
+**A:** File-based logging with automatic cleanup (older than X days). Change volume fail-safe: if more than X changes detected, stop and email support for manual verification with override capability. Per-user error handling: single errors continue processing, but same user erroring repeatedly triggers alert. Multiple errors in one run may halt execution. Email summary reports after each sync with counts of additions/modifications/removals/errors.

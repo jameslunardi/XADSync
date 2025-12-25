@@ -12,7 +12,14 @@
 Cross-domain Active Directory synchronisation tool for syncing user accounts between separate AD domains.
 
 ### Scope
-*To be defined through requirements gathering*
+One-way synchronization from corporate domain to production domain.
+
+### Domain Architecture
+- **Source Domain:** corp.local (Corporate)
+- **Target Domain:** prod.local (Production)
+- **Relationship:** Two isolated domains, no trust relationship
+- **Network:** Same organization, separate network segments
+- **Deployment:** Sync server runs in production network segment
 
 ---
 
@@ -22,7 +29,11 @@ Cross-domain Active Directory synchronisation tool for syncing user accounts bet
 *To be documented*
 
 ### 2.2 Technical Requirements
-*To be documented*
+
+#### 2.2.1 Authentication & Permissions
+- **Corp Domain Service Account:** Read-only access to source domain (corp.local)
+- **Prod Domain Service Account:** Write access to target domain (prod.local)
+- **Server Location:** Production network with connectivity to both domains
 
 ---
 
@@ -47,3 +58,6 @@ Cross-domain Active Directory synchronisation tool for syncing user accounts bet
 ---
 
 ## Questions & Answers
+
+### Q1: What AD domains are you synchronizing between?
+**A:** Two domains - corp.local (corporate/source) and prod.local (production/target). They are isolated with no trust relationship, in the same organization but on separate network segments. The sync server will run in the production network with service accounts for both domains (read on corp, write on prod).

@@ -195,17 +195,285 @@ One-way synchronization from corporate domain to production domain.
 - Only the service account can read the encrypted credentials
 
 ### 3.3 Components
-*To be designed*
+
+**Main Scripts:**
+1. **Sync-XADUsers.ps1**
+   - Main synchronization orchestrator
+   - Entry point for scheduled tasks or manual execution
+   - Coordinates all modules and workflow steps
+   - Implements fail-safe checks and error thresholds
+
+2. **Setup-XADSync.ps1**
+   - Initial setup and configuration utility
+   - Creates encrypted credential files
+   - Validates configuration file
+   - Tests domain connectivity
+   - Creates required directory structure
+
+**PowerShell Modules:**
+1. **XADSync.Config.psm1**
+   - Load and parse config.json
+   - Import encrypted credentials
+   - Validate configuration settings
+   - Provide configuration access to other modules
+
+2. **XADSync.Logging.psm1**
+   - Write log entries to file
+   - Implement log rotation (delete old logs)
+   - Format log messages with timestamps
+   - Support different log levels (INFO, WARNING, ERROR)
+
+3. **XADSync.ADOperations.psm1**
+   - Get-XADUsers: Retrieve users from domain with filters
+   - New-XADUser: Create new user in target domain
+   - Update-XADUser: Update user attributes
+   - Move-XADUserToQuarantine: Move user to quarantine OU and set date
+   - Remove-XADQuarantinedUser: Delete users past retention period
+   - Test-XADConnection: Validate domain connectivity
+
+4. **XADSync.Compare.psm1**
+   - Compare-XADUserSets: Compare source and target users
+   - Categorize into additions, modifications, removals
+   - Detect attribute changes requiring updates
+   - Apply exclusion list filtering
+
+5. **XADSync.ErrorTracking.psm1**
+   - Load/save error-history.json
+   - Track per-user error counts
+   - Update error timestamps
+   - Reset error count on success
+   - Check if user exceeds error threshold
+
+6. **XADSync.Notifications.psm1**
+   - Send-XADSyncReport: Email summary reports
+   - Send-XADAlert: Email alert messages
+   - Format-XADSyncSummary: Generate report content
+   - Format-XADFailSafeAlert: Generate fail-safe alerts
+
+**Directory Structure:**
+```
+XADSync/
+├── Sync-XADUsers.ps1           # Main sync script
+├── Setup-XADSync.ps1           # Setup utility
+├── Modules/
+│   ├── XADSync.Config.psm1
+│   ├── XADSync.Logging.psm1
+│   ├── XADSync.ADOperations.psm1
+│   ├── XADSync.Compare.psm1
+│   ├── XADSync.ErrorTracking.psm1
+│   └── XADSync.Notifications.psm1
+├── Config/
+│   ├── config.json             # Main configuration
+│   ├── config.example.json     # Example config (for repo)
+│   └── Credentials/            # Encrypted credential files (gitignored)
+│       ├── corp-domain-credential.xml
+│       └── prod-domain-credential.xml
+├── Data/
+│   └── error-history.json      # Persistent error tracking
+├── Logs/                       # Log files (gitignored)
+│   └── sync-YYYY-MM-DD.log
+└── docs/
+    └── architecture.md
+```
 
 ### 3.4 Data Flow
-*To be mapped*
+
+**Sync Execution Flow:**
+
+1. **Initialization**
+   - Load configuration from config.json
+   - Import encrypted credentials
+   - Initialize logging
+   - Load error history
+
+2. **Data Collection**
+   - Connect to corp.local with read credential
+   - Retrieve all users with EmployeeID populated
+   - Connect to prod.local with write credential
+   - Retrieve all previously synced users
+
+3. **Comparison & Planning**
+   - Apply exclusion list to source users
+   - Compare source vs target users by EmployeeID
+   - Categorize into:
+     - Additions (in corp, not in prod)
+     - Modifications (in both, attributes differ)
+     - Removals (in prod, not in corp)
+
+4. **Fail-Safe Check**
+   - Count total changes (additions + modifications + removals)
+   - If exceeds threshold:
+     - Send alert email to support team
+     - Log details and halt execution
+     - Require manual override to continue
+
+5. **Execute Changes** (if fail-safe passes)
+   - Process Additions:
+     - Create disabled users in target OU
+     - Track successes and errors
+   - Process Modifications:
+     - Update user attributes
+     - Track successes and errors
+   - Process Removals:
+     - Disable and move to quarantine
+     - Set quarantine date
+     - Track successes and errors
+   - Process Quarantine Cleanup:
+     - Find users quarantined > 90 days
+     - Delete permanently
+
+6. **Error Handling**
+   - Update error-history.json with results
+   - Check for repeated user failures
+   - Check for excessive errors in single run
+   - Send alerts if thresholds exceeded
+
+7. **Reporting**
+   - Generate summary report
+   - Clean up old log files
+   - Send email report to support team
 
 ---
 
 ## 4. Implementation Roadmap
 
 ### 4.1 Phases
-*To be planned*
+
+**Phase 1: Foundation & Setup**
+- Create directory structure (Config/, Modules/, Data/, Logs/)
+- Create .gitignore (exclude Credentials/, Logs/, Data/)
+- Implement XADSync.Config.psm1
+  - JSON config loading
+  - Credential import from XML files
+  - Configuration validation
+- Implement XADSync.Logging.psm1
+  - Basic logging functions
+  - Log rotation
+- Create config.example.json template
+- Create Setup-XADSync.ps1
+  - Directory creation
+  - Credential file generation
+  - Configuration validation
+  - Domain connectivity tests
+
+**Phase 2: Core AD Operations**
+- Implement XADSync.ADOperations.psm1
+  - Get-XADUsers (with EmployeeID filter)
+  - Test-XADConnection
+- Create basic Sync-XADUsers.ps1 skeleton
+  - Load config
+  - Initialize logging
+  - Retrieve users from both domains
+  - Display user counts (no modifications yet)
+- Test against corp.local and prod.local test domains
+
+**Phase 3: Comparison Logic**
+- Implement XADSync.Compare.psm1
+  - Compare-XADUserSets function
+  - Categorize additions, modifications, removals
+  - Detect attribute differences
+  - Apply exclusion list filtering
+- Update Sync-XADUsers.ps1
+  - Integrate comparison logic
+  - Log planned changes (don't execute yet)
+- Test comparison accuracy with sample data
+
+**Phase 4: Write Operations**
+- Extend XADSync.ADOperations.psm1
+  - New-XADUser (create disabled users)
+  - Update-XADUser (update attributes)
+  - Move-XADUserToQuarantine
+  - Remove-XADQuarantinedUser
+- Update Sync-XADUsers.ps1
+  - Execute additions, modifications, removals
+  - Add per-user error handling (continue on failure)
+- Test each operation type in isolation
+
+**Phase 5: Error Tracking & Fail-Safes**
+- Implement XADSync.ErrorTracking.psm1
+  - Load/save error-history.json
+  - Track per-user errors
+  - Check error thresholds
+- Implement XADSync.Notifications.psm1 (basic version)
+  - Send-XADAlert function
+  - Format-XADFailSafeAlert function
+- Update Sync-XADUsers.ps1
+  - Implement change volume fail-safe
+  - Implement per-run error threshold
+  - Implement repeated user error detection
+  - Add override mechanism for fail-safe
+- Test fail-safe triggers and alerts
+
+**Phase 6: Reporting & Notifications**
+- Complete XADSync.Notifications.psm1
+  - Send-XADSyncReport function
+  - Format-XADSyncSummary function
+- Update Sync-XADUsers.ps1
+  - Generate summary statistics
+  - Send email reports
+  - Include sync duration
+- Test email delivery and report formatting
+
+**Phase 7: Quarantine Cleanup**
+- Update XADSync.ADOperations.psm1
+  - Implement 90-day quarantine cleanup logic
+- Update Sync-XADUsers.ps1
+  - Check quarantined users
+  - Delete users past retention period
+- Test quarantine date logic and deletion
+
+**Phase 8: Production Readiness**
+- Create comprehensive documentation
+  - Installation guide
+  - Configuration guide
+  - Troubleshooting guide
+- Create Windows Scheduled Task setup guide
+- End-to-end testing with realistic dataset
+- Security audit (credential handling, permissions)
+- Performance testing (large user sets)
+- Create example config files for different scenarios
+
+### 4.2 Testing Strategy
+
+**Unit Testing:**
+- Test each module function independently
+- Mock AD operations where possible
+- Validate configuration parsing
+
+**Integration Testing:**
+- Test against corp.local and prod.local test domains
+- Use dedicated test OUs
+- Create test users with known attributes
+- Verify each sync operation type
+
+**End-to-End Testing:**
+- Full sync cycles with various scenarios:
+  - New user creation
+  - Attribute updates
+  - User removal and quarantine
+  - Fail-safe triggering
+  - Error handling
+  - Report generation
+
+**Security Testing:**
+- Verify credential encryption
+- Test with minimal permissions
+- Validate exclusion list functionality
+
+### 4.3 Deployment Checklist
+
+- [ ] Install ActiveDirectory PowerShell module on sync server
+- [ ] Create service account in corp.local (read-only)
+- [ ] Create service account in prod.local (write access)
+- [ ] Configure OUs in prod.local (new users, quarantine)
+- [ ] Copy XADSync files to sync server
+- [ ] Run Setup-XADSync.ps1 as service account
+- [ ] Configure config.json with production settings
+- [ ] Test manual sync execution
+- [ ] Create Windows Scheduled Task (every 2 hours)
+- [ ] Configure SMTP for email notifications
+- [ ] Monitor first few sync cycles
+- [ ] Document any environment-specific configurations
 
 ---
 
@@ -228,3 +496,6 @@ One-way synchronization from corporate domain to production domain.
 
 ### Q6: How should configuration be managed?
 **A:** Use a JSON config file for all settings (domains, OUs, thresholds, email, exclusions). For credentials, use PowerShell's Export-Clixml/Import-Clixml which encrypts credentials using Windows DPAPI. Credentials are user and machine-specific, ensuring only the service account on the sync server can decrypt them. A setup script will create the encrypted credential files.
+
+### Q7: Component/Module Structure?
+**A:** Modular design with 2 main scripts (Sync-XADUsers.ps1, Setup-XADSync.ps1) and 6 PowerShell modules (Config, Logging, ADOperations, Compare, ErrorTracking, Notifications). Organized directory structure with Config/, Modules/, Data/, and Logs/ folders.
